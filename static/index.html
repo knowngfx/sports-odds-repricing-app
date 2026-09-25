@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sports Odds Repricing Signal App</title>
+  <style>
+    /* ------------------------------------------------------------------ */
+    /* Reset & Base                                                         */
+    /* ------------------------------------------------------------------ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Header                                                               */
+    /* ------------------------------------------------------------------ */
+    header {
+      background: #1a1d27;
+      border-bottom: 1px solid #2d3148;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header-left h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.3px;
+    }
+
+    .header-left p {
+      font-size: 0.78rem;
+      color: #64748b;
+      margin-top: 3px;
+    }
+
+    .badge-mock {
+      background: #7c3aed22;
+      border: 1px solid #7c3aed66;
+      color: #a78bfa;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Summary bar                                                          */
+    /* ------------------------------------------------------------------ */
+    .summary-bar {
+      display: flex;
+      gap: 16px;
+      padding: 16px 32px;
+      background: #13161f;
+      border-bottom: 1px solid #1e2235;
+      flex-wrap: wrap;
+    }
+
+    .stat-card {
+      background: #1a1d27;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 12px 20px;
+      min-width: 130px;
+    }
+
+    .stat-card .label {
+      font-size: 0.7rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 4px;
+    }
+
+    .stat-card .value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .stat-card.flagged .value { color: #f59e0b; }
+
+    /* ------------------------------------------------------------------ */
+    /* Disclaimer banner                                                    */
+    /* ------------------------------------------------------------------ */
+    .disclaimer {
+      margin: 20px 32px 0;
+      background: #1e1535;
+      border: 1px solid #4c1d9566;
+      border-left: 4px solid #7c3aed;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 0.78rem;
+      color: #c4b5fd;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .disclaimer span.icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+    /* ------------------------------------------------------------------ */
+    /* Filter bar                                                           */
+    /* ------------------------------------------------------------------ */
+    .filter-bar {
+      padding: 16px 32px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-bar label {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-right: 4px;
+    }
+
+    .filter-btn {
+      background: #1a1d27;
+      border: 1px solid #2d3148;
+      color: #94a3b8;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-btn:hover,
+    .filter-btn.active {
+      background: #2d3148;
+      border-color: #4f6ee6;
+      color: #f8fafc;
+    }
+
+    .filter-btn.active { color: #93c5fd; border-color: #3b82f6; background: #1e2d4a; }
+
+    /* ------------------------------------------------------------------ */
+    /* Games grid                                                           */
+    /* ------------------------------------------------------------------ */
+    .games-container {
+      padding: 0 32px 40px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(520px, 1fr));
+      gap: 16px;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Game card                                                            */
+    /* ------------------------------------------------------------------ */
+    .game-card {
+      background: #1a1d27;
+      border: 1px solid #2d3148;
+      border-radius: 14px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+      position: relative;
+    }
+
+    .game-card:hover { border-color: #4a5280; }
+
+    .game-card.flagged {
+      border-color: #f59e0b66;
+      box-shadow: 0 0 0 1px #f59e0b22, 0 4px 24px #f59e0b0d;
+    }
+
+    /* Flag ribbon */
+    .flag-ribbon {
+      background: linear-gradient(90deg, #f59e0b, #d97706);
+      color: #1c1008;
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 5px 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .flag-ribbon .ribbon-icon { font-size: 0.85rem; }
+
+    /* Card header */
+    .card-header {
+      padding: 14px 18px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #2d3148;
+    }
+
+    .game-time {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .game-status {
+      font-size: 0.72rem;
+      background: #0f2744;
+      color: #60a5fa;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* Teams section */
+    .teams {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: 18px 18px 14px;
+      gap: 8px;
+    }
+
+    .team { display: flex; flex-direction: column; gap: 4px; }
+    .team.away { align-items: flex-start; }
+    .team.home { align-items: flex-end; text-align: right; }
+
+    .team-name {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      line-height: 1.2;
+    }
+
+    .team-record {
+      font-size: 0.72rem;
+      color: #64748b;
+    }
+
+    .team-winpct {
+      font-size: 0.7rem;
+      color: #94a3b8;
+    }
+
+    .team.higher-ranked .team-name { color: #34d399; }
+    .team.higher-ranked .team-winpct { color: #6ee7b7; }
+
+    .vs-divider {
+      font-size: 0.75rem;
+      color: #475569;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    /* Odds section */
+    .odds-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: #2d3148;
+      border-top: 1px solid #2d3148;
+    }
+
+    .odds-cell {
+      background: #13161f;
+      padding: 12px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .odds-cell:first-child { border-radius: 0; }
+
+    .odds-label {
+      font-size: 0.65rem;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .odds-american {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    .odds-american.favorite { color: #f87171; }
+    .odds-american.underdog { color: #4ade80; }
+
+    .odds-implied {
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+
+    /* Signal explanation */
+    .signal-box {
+      margin: 0 18px 14px;
+      background: #1c1508;
+      border: 1px solid #f59e0b44;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.75rem;
+      color: #fcd34d;
+      line-height: 1.5;
+    }
+
+    .signal-box strong { color: #f59e0b; }
+
+    /* Odds source note */
+    .odds-source-note {
+      padding: 6px 18px 10px;
+      font-size: 0.65rem;
+      color: #334155;
+      font-style: italic;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Loading / Error / Empty states                                       */
+    /* ------------------------------------------------------------------ */
+    .state-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 32px;
+      gap: 16px;
+      color: #475569;
+    }
+
+    .state-container .icon { font-size: 2.5rem; }
+    .state-container h2 { font-size: 1.1rem; color: #64748b; }
+    .state-container p { font-size: 0.85rem; text-align: center; max-width: 420px; }
+
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #2d3148;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ------------------------------------------------------------------ */
+    /* Footer                                                               */
+    /* ------------------------------------------------------------------ */
+    footer {
+      text-align: center;
+      padding: 20px 32px;
+      font-size: 0.72rem;
+      color: #334155;
+      border-top: 1px solid #1e2235;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Responsive                                                           */
+    /* ------------------------------------------------------------------ */
+    @media (max-width: 600px) {
+      .games-container { grid-template-columns: 1fr; padding: 0 16px 32px; }
+      header, .summary-bar, .filter-bar, .disclaimer { padding-left: 16px; padding-right: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <h1>Sports Odds Repricing Signal App</h1>
+      <p>NBA - Today's Games - Favorite Undervalued Detection</p>
+    </div>
+    <span class="badge-mock">Mock Odds - Demo</span>
+  </header>
+
+  <!-- Summary bar -->
+  <div class="summary-bar" id="summaryBar" style="display:none">
+    <div class="stat-card">
+      <div class="label">League</div>
+      <div class="value" id="leagueName">NBA</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Games Today</div>
+      <div class="value" id="totalGames">-</div>
+    </div>
+    <div class="stat-card flagged">
+      <div class="label">Flagged Games</div>
+      <div class="value" id="flaggedGames">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Ranking Source</div>
+      <div class="value" style="font-size:0.75rem; color:#94a3b8; padding-top:4px">ESPN 2024-25 Win%</div>
+    </div>
+  </div>
+
+  <!-- Disclaimer -->
+  <div class="disclaimer" id="disclaimer" style="display:none">
+    <span class="icon">&#9888;</span>
+    <div>
+      <strong>Mock Odds Notice:</strong> All odds shown are randomly generated for demonstration purposes only.
+      They do not reflect real betting lines from any bookmaker.
+      Ranking data is sourced from ESPN NBA 2024-25 season standings (win percentage).
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar" id="filterBar" style="display:none">
+    <label>Show:</label>
+    <button class="filter-btn active" id="btnAll" onclick="filterGames('all')">All Games</button>
+    <button class="filter-btn" id="btnFlagged" onclick="filterGames('flagged')">Flagged Only</button>
+  </div>
+
+  <!-- Games container / state containers -->
+  <div id="stateContainer" class="state-container">
+    <div class="spinner"></div>
+    <h2>Loading today's games...</h2>
+    <p>Fetching NBA data from ESPN and generating odds signals.</p>
+  </div>
+
+  <div class="games-container" id="gamesContainer"></div>
+
+  <footer>
+    Built as a prototype assessment. Data: ESPN public API (no key required).
+    Odds: Mock data only. Signal logic: Favorite Undervalued (implied probability mismatch).
+  </footer>
+
+  <script>
+    let allGames = [];
+    let currentFilter = 'all';
+
+    // ------------------------------------------------------------------
+    // Fetch data from backend
+    // ------------------------------------------------------------------
+    async function loadGames() {
+      try {
+        const res = await fetch('/api/games');
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Server error');
+        }
+        const data = await res.json();
+        allGames = data.games;
+
+        // Populate summary
+        document.getElementById('totalGames').textContent  = data.total_games;
+        document.getElementById('flaggedGames').textContent = data.flagged_games;
+        document.getElementById('leagueName').textContent  = data.league;
+
+        document.getElementById('summaryBar').style.display = 'flex';
+        document.getElementById('disclaimer').style.display = 'flex';
+        document.getElementById('filterBar').style.display  = 'flex';
+        document.getElementById('stateContainer').style.display = 'none';
+
+        if (allGames.length === 0) {
+          showEmpty();
+        } else {
+          renderGames(allGames);
+          // Update flagged button label
+          const flagged = allGames.filter(g => g.favorite_undervalued).length;
+          document.getElementById('btnFlagged').textContent = `Flagged Only (${flagged})`;
+        }
+
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // Render games
+    // ------------------------------------------------------------------
+    function renderGames(games) {
+      const container = document.getElementById('gamesContainer');
+      container.innerHTML = '';
+
+      if (games.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column:1/-1; padding:40px; text-align:center; color:#475569">
+            No games match the current filter.
+          </div>`;
+        return;
+      }
+
+      games.forEach(game => {
+        container.appendChild(buildCard(game));
+      });
+    }
+
+    // ------------------------------------------------------------------
+    // Build a single game card
+    // ------------------------------------------------------------------
+    function buildCard(game) {
+      const card = document.createElement('div');
+      card.className = 'game-card' + (game.favorite_undervalued ? ' flagged' : '');
+
+      const homeHigher = game.home.win_pct >= game.away.win_pct;
+      const awayHigher = !homeHigher;
+
+      const homeAmerican = formatOdds(game.home.odds_american);
+      const awayAmerican = formatOdds(game.away.odds_american);
+
+      const homeClass = game.home.odds_american < 0 ? 'favorite' : 'underdog';
+      const awayClass = game.away.odds_american < 0 ? 'favorite' : 'underdog';
+
+      const gameTime = formatTime(game.game_time_utc);
+
+      card.innerHTML = `
+        ${game.favorite_undervalued ? `
+        <div class="flag-ribbon">
+          <span class="ribbon-icon">&#9873;</span>
+          FAVORITE UNDERVALUED - Market Mispricing Signal
+        </div>` : ''}
+
+        <div class="card-header">
+          <span class="game-time">${gameTime}</span>
+          <span class="game-status">${game.status}</span>
+        </div>
+
+        <div class="teams">
+          <div class="team away ${awayHigher ? 'higher-ranked' : ''}">
+            <div class="team-name">${game.away.name}</div>
+            <div class="team-record">${game.away.record} ${awayHigher ? '(Higher Ranked)' : ''}</div>
+            <div class="team-winpct">Win%: ${(game.away.win_pct * 100).toFixed(1)}%</div>
+          </div>
+          <div class="vs-divider">@</div>
+          <div class="team home ${homeHigher ? 'higher-ranked' : ''}">
+            <div class="team-name">${game.home.name}</div>
+            <div class="team-record">${game.home.record} ${homeHigher ? '(Higher Ranked)' : ''}</div>
+            <div class="team-winpct">Win%: ${(game.home.win_pct * 100).toFixed(1)}%</div>
+          </div>
+        </div>
+
+        <div class="odds-section">
+          <div class="odds-cell">
+            <div class="odds-label">${game.away.abbreviation} Odds [MOCK]</div>
+            <div class="odds-american ${awayClass}">${awayAmerican}</div>
+            <div class="odds-implied">Implied: ${(game.away.implied_prob * 100).toFixed(1)}%</div>
+          </div>
+          <div class="odds-cell">
+            <div class="odds-label">${game.home.abbreviation} Odds [MOCK]</div>
+            <div class="odds-american ${homeClass}">${homeAmerican}</div>
+            <div class="odds-implied">Implied: ${(game.home.implied_prob * 100).toFixed(1)}%</div>
+          </div>
+        </div>
+
+        ${game.favorite_undervalued ? `
+        <div class="signal-box">
+          <strong>Why flagged:</strong> ${game.higher_ranked_team}
+          (ranked higher at ${(game.higher_ranked_win_pct * 100).toFixed(1)}% win rate)
+          has an implied win probability of <strong>${(game.higher_ranked_implied_prob * 100).toFixed(1)}%</strong>
+          vs their opponent's <strong>${(game.lower_ranked_implied_prob * 100).toFixed(1)}%</strong>.
+          The market is pricing the better team as an underdog.
+        </div>` : ''}
+
+        <div class="odds-source-note">${game.odds_source}</div>
+      `;
+
+      return card;
+    }
+
+    // ------------------------------------------------------------------
+    // Filter
+    // ------------------------------------------------------------------
+    function filterGames(filter) {
+      currentFilter = filter;
+      document.getElementById('btnAll').classList.toggle('active', filter === 'all');
+      document.getElementById('btnFlagged').classList.toggle('active', filter === 'flagged');
+      const filtered = filter === 'flagged'
+        ? allGames.filter(g => g.favorite_undervalued)
+        : allGames;
+      renderGames(filtered);
+    }
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+    function formatOdds(odds) {
+      return odds > 0 ? `+${odds}` : `${odds}`;
+    }
+
+    function formatTime(utcStr) {
+      try {
+        const d = new Date(utcStr);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+      } catch {
+        return utcStr;
+      }
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('stateContainer');
+      el.style.display = 'flex';
+      el.innerHTML = `
+        <div class="icon">&#9888;</div>
+        <h2>Failed to load games</h2>
+        <p>${msg}</p>`;
+    }
+
+    function showEmpty() {
+      const el = document.getElementById('stateContainer');
+      el.style.display = 'flex';
+      el.innerHTML = `
+        <div class="icon">&#127936;</div>
+        <h2>No games scheduled today</h2>
+        <p>Check back on a game day. The NBA preseason or regular season must be active for games to appear.</p>`;
+    }
+
+    // ------------------------------------------------------------------
+    // Boot
+    // ------------------------------------------------------------------
+    loadGames();
+  </script>
+
+</body>
+</html>
